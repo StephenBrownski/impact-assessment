@@ -13,33 +13,29 @@
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  **/
 
+defined( 'ABSPATH' ) || exit;
+
 // global variables for your plugin
-define("MY_PLUGIN_PATH", plugin_dir_path(__FILE__));
-define("MY_PLUGIN_URL", plugin_dir_url(__FILE__));
-define("MY_PLUGIN_SLUG", "my-plugin");
+define("WC_Q_ALERT_PATH", plugin_dir_path(__FILE__));
+define("WC_Q_ALERT_URL", plugin_dir_url(__FILE__));
+define("WC_Q_ALERT_SLUG", "wc-q-alert");
 
-require_once MY_PLUGIN_PATH . "inc/admin.php";
-
-register_activation_hook(__FILE__, "setup_db");
-
-function setup_db() {
-    // database setup code
-}
+require_once WC_Q_ALERT_PATH . "inc/admin.php";
 
 function get_url($file) {
-    return MY_PLUGIN_URL . $file;
+  return WC_Q_ALERT_URL . $file;
 }
 
 function get_path($file) {
-    return MY_PLUGIN_PATH . $file;
+  return WC_Q_ALERT_PATH . $file;
 }
 
 function enqueue_my_styles() {
-    wp_enqueue_style("atc-styles", get_url("assets/style.css"), array(), filemtime(get_path("assets/style.css")));
+  wp_enqueue_style("atc-styles", get_url("assets/style.css"), array(), filemtime(get_path("assets/style.css")));
 }
 
 function enqueue_my_scripts() {
-    wp_enqueue_script("atc-scripts", get_url("assets/script.js"), array("jquery"), filemtime(get_path("assets/script.js")));
+  wp_enqueue_script("atc-scripts", get_url("assets/script.js"), array("jquery"), filemtime(get_path("assets/script.js")));
 }
 
 add_action("wp_enqueue_scripts", "enqueue_my_styles");
