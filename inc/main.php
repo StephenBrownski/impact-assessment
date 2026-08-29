@@ -49,7 +49,24 @@ class WCQuantityAlert {
    */
   private function init() {
     require_once WC_Q_ALERT_PATH . 'inc/Admin.php';
-    require_once WC_Q_ALERT_PATH . 'inc/Main.php';
+
+    function enqueue_my_styles() {
+      wp_enqueue_style("atc-styles", get_url("assets/style.css"), array(), filemtime(get_path("assets/style.css")));
+    }
+
+    function enqueue_my_scripts() {
+      wp_enqueue_script("atc-scripts", get_url("assets/script.js"), array("jquery"), filemtime(get_path("assets/script.js")));
+    }
+
+    add_action("wp_enqueue_scripts", "enqueue_my_styles");
+    add_action("wp_enqueue_scripts", "enqueue_my_scripts");
   }
 }
 endif;
+
+add_action( 'woocommerce_init', 'WCQuantityAlertInitialize' );
+
+function WCQuantityAlertInitialize() {
+	// Custom code here. WooCommerce is active and initialized...
+  $GLOBALS['wc_quantity_alert'] = WCQuantityAlert::instance();
+}
