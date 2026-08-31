@@ -23,7 +23,7 @@ function WCCartObserver(callback) {
 
   const { dispatch } = window.wp.data;
 
-  // testing this...
+  // This forces the cart to be refreshed on a page load. Fixes issue with single product page.
   dispatch(cartStore).invalidateResolutionForStore();
 
   const STORAGE_KEY = 'wc_cart_observer_snapshot';
@@ -132,14 +132,13 @@ function WCCartObserver(callback) {
       return changes;
     }
 
+    // Detect additions and quantity changes.
     currentItems.forEach((currentItem, cartItemKey) => {
 
       const previousItem =
         previousItems.get(cartItemKey);
 
-      /*
-       * Item didn't exist before.
-       */
+      // Item didn't exist before.
       if (!previousItem) {
         changes.push({
           cartItemKey,
@@ -151,9 +150,7 @@ function WCCartObserver(callback) {
         return;
       }
 
-      /*
-       * Existing item changed quantity.
-       */
+      // Existing item changed quantity.
       if (currentItem.quantity !== previousItem.quantity) {
         changes.push({
           cartItemKey,
@@ -162,6 +159,20 @@ function WCCartObserver(callback) {
           item: currentItem.item
         });
       }
+    });
+
+    // Detect removals.
+    previousItems.forEach((previousItem, cartItemKey) => {
+
+      if (!currentItems.has(cartItemKey)) {
+        changes.push({
+          cartItemKey,
+          oldQuantity: previousItem.quantity,
+          newQuantity: 0,
+          item: previousItem.item
+        });
+      }
+
     });
 
     return changes;
@@ -301,6 +312,11 @@ function WCCartObserver(callback) {
           alert(
             name +
             ' was added to cart'
+          );
+        } else if (change.newQuantity == 0) {
+          alert(
+            name +
+            ' was removed from the cart'
           );
         } else {
           alert(
