@@ -61,7 +61,6 @@ function WCCartObserver(callback) {
   // ------------------------------------------------------------
 
   function serializeSnapshot(snapshot) {
-    console.log('in serializeSnapshot');
     const data = {};
 
     snapshot.forEach((item, key) => {
@@ -78,7 +77,6 @@ function WCCartObserver(callback) {
   // ------------------------------------------------------------
 
   function savePreviousSnapshot(snapshot) {
-    console.log('in savePreviousSnapshot');
     sessionStorage.setItem(
       STORAGE_KEY,
       JSON.stringify(
@@ -92,7 +90,6 @@ function WCCartObserver(callback) {
   // ------------------------------------------------------------
 
   function loadPreviousSnapshot() {
-    console.log('in loadPreviousSnapshot');
     const stored = sessionStorage.getItem(STORAGE_KEY);
 
     if (!stored) {
@@ -188,7 +185,6 @@ function WCCartObserver(callback) {
 
     if (state.hasFinishedResolution?.('getCartData') === false) {
       setTimeout(waitForHydration, 50);
-      console.log('spinning my wheels');
       return;
     }
 
@@ -200,7 +196,6 @@ function WCCartObserver(callback) {
     const storedItems = loadPreviousSnapshot();
 
     if (storedItems) {
-      console.log('we have a stored cart');
       const changes = findChanges(
         storedItems,
         currentItems
@@ -223,8 +218,6 @@ function WCCartObserver(callback) {
 
     hydrated = true;
   }
-
-  console.log('first attempt at hydration:');
 
   waitForHydration();
 
@@ -266,21 +259,14 @@ function WCCartObserver(callback) {
   }, cartStore);
 
   // ------------------------------------------------------------
-  // Before leaving the page, preserve the current baseline.
+  // Before submitting add to cart, preserve the current baseline.
   // ------------------------------------------------------------
 
   jQuery('form.cart').on('submit', function () {
-
-    console.log(hydrated);
-    console.log(previousItems);
-
     if (!hydrated || !previousItems) {
       return;
     }
 
-    console.log('hellooo');
-
-    console.log('in adding_to_cart event');
     if (!sessionStorage.getItem(STORAGE_KEY)) {
       savePreviousSnapshot(previousItems);
     }
