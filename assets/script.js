@@ -6,6 +6,7 @@ function WCCartObserver(callback) {
     );
   }
 
+  // Ensure cart is ready to work with.
   if (
     !window.wp ||
     !window.wp.data ||
@@ -23,9 +24,13 @@ function WCCartObserver(callback) {
 
   const { dispatch } = window.wp.data;
 
-  // This forces the cart to be refreshed on a page load. Fixes issue with single product page.
+  // This forces the cart to be refreshed on a page load.
+  // Fixes issue with single product page add to cart.
   dispatch(cartStore).invalidateResolutionForStore();
 
+  // We will be storing the last updated cart in localstorage.
+  // This is used to allow for alerting a change from a
+  // classic form submit that refreshes the page.
   const STORAGE_KEY = 'wc_cart_observer_snapshot';
 
   let hydrated = false;
@@ -57,9 +62,8 @@ function WCCartObserver(callback) {
   }
 
   // ------------------------------------------------------------
-  // Convert snapshot to something sessionStorage can hold
+  // Store only the necessary information in session storage
   // ------------------------------------------------------------
-
   function serializeSnapshot(snapshot) {
     const data = {};
 
@@ -73,7 +77,7 @@ function WCCartObserver(callback) {
   }
 
   // ------------------------------------------------------------
-  // Save the PREVIOUS cart state
+  // Save the previous cart state
   // ------------------------------------------------------------
 
   function savePreviousSnapshot(snapshot) {
@@ -86,7 +90,7 @@ function WCCartObserver(callback) {
   }
 
   // ------------------------------------------------------------
-  // Load the PREVIOUS cart state
+  // Load the previous cart state
   // ------------------------------------------------------------
 
   function loadPreviousSnapshot() {
@@ -108,9 +112,7 @@ function WCCartObserver(callback) {
       });
 
       return snapshot;
-
     } catch (error) {
-
       sessionStorage.removeItem(STORAGE_KEY);
 
       return null;
@@ -122,7 +124,6 @@ function WCCartObserver(callback) {
   // ------------------------------------------------------------
 
   function findChanges(previousItems, currentItems) {
-
     const changes = [];
 
     if (!previousItems || !currentItems) {
@@ -131,11 +132,10 @@ function WCCartObserver(callback) {
 
     // Detect additions and quantity changes.
     currentItems.forEach((currentItem, cartItemKey) => {
-
       const previousItem =
         previousItems.get(cartItemKey);
 
-      // Item didn't exist before.
+      // Item didn't exist before - added
       if (!previousItem) {
         changes.push({
           cartItemKey,
@@ -158,9 +158,8 @@ function WCCartObserver(callback) {
       }
     });
 
-    // Detect removals.
+    // Detect removals. Need to loop over previous
     previousItems.forEach((previousItem, cartItemKey) => {
-
       if (!currentItems.has(cartItemKey)) {
         changes.push({
           cartItemKey,
@@ -180,7 +179,6 @@ function WCCartObserver(callback) {
   // ------------------------------------------------------------
 
   function waitForHydration() {
-
     const state = select(cartStore);
 
     if (state.hasFinishedResolution?.('getCartData') === false) {
@@ -225,7 +223,6 @@ function WCCartObserver(callback) {
   // ------------------------------------------------------------
 
   const unsubscribe = subscribe(() => {
-
     if (!hydrated) {
       return;
     }
@@ -260,6 +257,10 @@ function WCCartObserver(callback) {
   // Before submitting add to cart, preserve the current baseline.
   // ------------------------------------------------------------
 
+
+  // This is a special case for the default single product page.
+  // I hate that I needed a dom selector but didn't want to rely
+  // on a "beforeunload" event that doesn't have wide support.
   jQuery('form.cart').on('submit', function () {
     if (!hydrated || !previousItems) {
       return;
@@ -280,38 +281,16 @@ function WCCartObserver(callback) {
   $(document).ready(function () {
     const unsubscribe = WCCartObserver(
       function (change) {
-
-        console.log(
-          'WooCommerce cart quantity changed:',
-          {
-            cartItemKey: change.cartItemKey,
-            oldQuantity: change.oldQuantity,
-            newQuantity: change.newQuantity
-          }
-        );
-
+        // Condition alert string for missing product sku.
         const name = change.item.sku == '' ? 'This product' : change.item.name;
 
         if (change.oldQuantity == 0) {
-          alert(
-            name +
-            ' was added to cart'
-          );
+          alert(name + ' was added to cart');
         } else if (change.newQuantity == 0) {
-          alert(
-            name +
-            ' was removed from the cart'
-          );
+          alert(name + ' was removed from the cart');
         } else {
-          alert(
-            name +
-            ' quantity changed from ' +
-            change.oldQuantity +
-            ' to ' +
-            change.newQuantity
-          );
+          alert(name + ' quantity changed from ' + change.oldQuantity + ' to ' + change.newQuantity);
         }
-
       }
     );
   });
