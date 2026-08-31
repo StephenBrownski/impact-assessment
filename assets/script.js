@@ -25,22 +25,6 @@ function WCCartObserver(callback) {
   let hydrated = false;
   let previousItems = null;
 
-  function waitForHydration() {
-    const state = select(cartStore);
-    console.log(hydrated);
-    if (state.hasPendingItemsOperations()) {
-      setTimeout(waitForHydration, 50);
-      console.log('not hydrated');
-      return;
-    }
-
-    previousItems = getCartSnapshot();
-    hydrated = true;
-  }
-
-  // Establish the initial cart snapshot only after hydration.
-  waitForHydration();
-
   // Maps cart data into a more readable output
   function getCartSnapshot() {
     const cart = select(cartStore).getCartData();
@@ -64,8 +48,21 @@ function WCCartObserver(callback) {
     );
   }
 
-  // Get initial state of cart
-  previousItems = getCartSnapshot();
+  function waitForHydration() {
+    const state = select(cartStore);
+    console.log(state.getCartData().items.length);
+    if (state.hasFinishedResolution?.('getCartData') === false) {
+      setTimeout(waitForHydration, 50);
+      console.log('not hydrated');
+      return;
+    }
+
+    previousItems = getCartSnapshot();
+    hydrated = true;
+  }
+
+  // Establish the initial cart snapshot only after hydration.
+  waitForHydration();
 
   // Subscribe to cart changes. Compare snapshots rather than assuming
   // a 'change' is something we care about.
@@ -104,8 +101,7 @@ function WCCartObserver(callback) {
 (function ($) {
   "use strict";
 
-  // javascript code here. i.e.: $(document).ready( function(){} ); 
-  $(document).ready(function ($) {
+  $(document).ready(function () {
     const unsubscribe = WCCartObserver(
       function (change) {
         console.log('WooCommerce cart quantity changed:', {
