@@ -21,6 +21,11 @@ function WCCartObserver(callback) {
   const { select, subscribe } = window.wp.data;
   const { cartStore } = window.wc.wcBlocksData;
 
+  const { dispatch } = window.wp.data;
+
+  // testing this...
+  dispatch(cartStore).invalidateResolutionForStore();
+
   const STORAGE_KEY = 'wc_cart_observer_snapshot';
 
   let hydrated = false;
@@ -52,11 +57,11 @@ function WCCartObserver(callback) {
   }
 
   // ------------------------------------------------------------
-  // Save snapshot across page reloads
+  // Convert snapshot to something sessionStorage can hold
   // ------------------------------------------------------------
 
-  function saveSnapshot(snapshot) {
-    console.log('in save snapshot');
+  function serializeSnapshot(snapshot) {
+    console.log('in serializeSnapshot');
     const data = {};
 
     snapshot.forEach((item, key) => {
@@ -65,24 +70,34 @@ function WCCartObserver(callback) {
       };
     });
 
+    return data;
+  }
+
+  // ------------------------------------------------------------
+  // Save the PREVIOUS cart state
+  // ------------------------------------------------------------
+
+  function savePreviousSnapshot(snapshot) {
+    console.log('in savePreviousSnapshot');
     sessionStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify(data)
+      JSON.stringify(
+        serializeSnapshot(snapshot)
+      )
     );
   }
 
   // ------------------------------------------------------------
-  // Load snapshot from previous page
+  // Load the PREVIOUS cart state
   // ------------------------------------------------------------
 
-  function loadSnapshot() {
+  function loadPreviousSnapshot() {
+    console.log('in loadPreviousSnapshot');
     const stored = sessionStorage.getItem(STORAGE_KEY);
 
     if (!stored) {
       return null;
     }
-
-    console.log('in loadsnapshot');
 
     try {
       const data = JSON.parse(stored);
@@ -97,25 +112,34 @@ function WCCartObserver(callback) {
 
       return snapshot;
 
-    } catch (e) {
+    } catch (error) {
+
       sessionStorage.removeItem(STORAGE_KEY);
+
       return null;
     }
   }
 
   // ------------------------------------------------------------
-  // Compare two snapshots
+  // Compare snapshots
   // ------------------------------------------------------------
 
   function findChanges(previousItems, currentItems) {
 
     const changes = [];
 
+    if (!previousItems || !currentItems) {
+      return changes;
+    }
+
     currentItems.forEach((currentItem, cartItemKey) => {
 
-      const previousItem = previousItems.get(cartItemKey);
+      const previousItem =
+        previousItems.get(cartItemKey);
 
-      // New item
+      /*
+       * Item didn't exist before.
+       */
       if (!previousItem) {
         changes.push({
           cartItemKey,
@@ -127,7 +151,9 @@ function WCCartObserver(callback) {
         return;
       }
 
-      // Quantity changed
+      /*
+       * Existing item changed quantity.
+       */
       if (currentItem.quantity !== previousItem.quantity) {
         changes.push({
           cartItemKey,
@@ -142,7 +168,7 @@ function WCCartObserver(callback) {
   }
 
   // ------------------------------------------------------------
-  // Wait for initial cart hydration
+  // Initial hydration
   // ------------------------------------------------------------
 
   function waitForHydration() {
@@ -151,20 +177,19 @@ function WCCartObserver(callback) {
 
     if (state.hasFinishedResolution?.('getCartData') === false) {
       setTimeout(waitForHydration, 50);
+      console.log('spinning my wheels');
       return;
     }
 
     const currentItems = getCartSnapshot();
 
     /*
-     * The cart is now hydrated.
-     *
-     * Check whether we have a snapshot from the previous page.
+     * Was there a cart snapshot from before this page load?
      */
-    const storedItems = loadSnapshot();
+    const storedItems = loadPreviousSnapshot();
 
     if (storedItems) {
-      console.log('Found stored items');
+      console.log('we have a stored cart');
       const changes = findChanges(
         storedItems,
         currentItems
@@ -174,26 +199,26 @@ function WCCartObserver(callback) {
         callback(change);
       });
 
-      // We have consumed the previous-page snapshot.
+      /*
+       * We've consumed the cross-page snapshot.
+       */
       sessionStorage.removeItem(STORAGE_KEY);
     }
 
     /*
-     * The hydrated cart becomes our live baseline.
+     * The hydrated cart is now our live baseline.
      */
     previousItems = currentItems;
 
     hydrated = true;
   }
 
-  // ------------------------------------------------------------
-  // Initialize
-  // ------------------------------------------------------------
+  console.log('first attempt at hydration:');
 
   waitForHydration();
 
   // ------------------------------------------------------------
-  // Subscribe to cart changes
+  // Live cart subscription
   // ------------------------------------------------------------
 
   const unsubscribe = subscribe(() => {
@@ -205,8 +230,7 @@ function WCCartObserver(callback) {
     const state = select(cartStore);
 
     /*
-     * Don't inspect the cart while WooCommerce is still
-     * processing an item operation.
+     * Don't inspect intermediate cart states.
      */
     if (state.hasPendingItemsOperations?.()) {
       return;
@@ -224,16 +248,33 @@ function WCCartObserver(callback) {
     });
 
     /*
-     * Update the live baseline.
+     * Update our in-memory baseline.
      */
     previousItems = currentItems;
 
-    /*
-     * Keep the latest known cart available across navigation.
-     */
-    saveSnapshot(currentItems);
-
   }, cartStore);
+
+  // ------------------------------------------------------------
+  // Before leaving the page, preserve the current baseline.
+  // ------------------------------------------------------------
+
+  jQuery('form.cart').on('submit', function () {
+
+    console.log(hydrated);
+    console.log(previousItems);
+
+    if (!hydrated || !previousItems) {
+      return;
+    }
+
+    console.log('hellooo');
+
+    console.log('in adding_to_cart event');
+    if (!sessionStorage.getItem(STORAGE_KEY)) {
+      savePreviousSnapshot(previousItems);
+    }
+
+  });
 
   return unsubscribe;
 }
