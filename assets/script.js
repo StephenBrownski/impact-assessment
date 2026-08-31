@@ -284,6 +284,7 @@ function WCCartObserver(callback) {
         // Condition alert string for missing product sku.
         const name = change.item.sku == '' ? 'This product' : change.item.name;
 
+        // Conditions for addition, removal, and simple change.
         if (change.oldQuantity == 0) {
           alert(name + ' was added to cart');
         } else if (change.newQuantity == 0) {
