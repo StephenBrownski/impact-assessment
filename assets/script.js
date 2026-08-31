@@ -201,9 +201,8 @@ function WCCartObserver(callback) {
         currentItems
       );
 
-      changes.forEach((change) => {
-        callback(change);
-      });
+      // Alert only a single item when multiple are added
+      callback(changes[0]);
 
       /*
        * We've consumed the cross-page snapshot.
@@ -247,9 +246,8 @@ function WCCartObserver(callback) {
       currentItems
     );
 
-    changes.forEach((change) => {
-      callback(change);
-    });
+    // Alert only a single item when multiple are added
+    callback(changes[0]);
 
     /*
      * Update our in-memory baseline.
