@@ -54,8 +54,16 @@ class WCQuantityAlert {
       wp_enqueue_style("atc-styles", get_url("assets/style.css"), array(), filemtime(get_path("assets/style.css")));
     }
 
+    // Ensure that wp-data and wc-blocks-data-store are explicitly required.
+    // This will allow a single observer to fire anywhere.
     function enqueue_my_scripts() {
-      wp_enqueue_script("atc-scripts", get_url("assets/script.js"), array("jquery"), filemtime(get_path("assets/script.js")));
+      wp_enqueue_script(
+        "atc-scripts",
+        get_url("assets/script.js"),
+        array("jquery", "wp-data", "wc-blocks-data-store"),
+        '1.0.0',
+        true
+      );
     }
 
     add_action("wp_enqueue_scripts", "enqueue_my_styles");
